@@ -6,9 +6,9 @@ window.path = "http://localhost:3000/records";
 
 // Your retrieve function plus any additional functions go here ...
 const isPrimaryColor = color => ['red', 'blue', 'yellow'].indexOf(color) !== -1;
-const createReqUri = (limit, idx, colors) => {
+const createReqUri = (idx, colors) => {
   const uri = new URI(window.path)
-    .addQuery('limit', limit)
+    .addQuery('limit', '11')
     .addQuery('offset', idx);
   if (colors) uri.addQuery('color[]', colors);
   return uri;
@@ -19,12 +19,14 @@ const retrieve = (options = {}) => {
   const index = (page - 1) * 10;
   const result = {ids: [], open: [], closedPrimaryCount: 0};
 
-  return fetch(createReqUri(10, index, colors))
+  return fetch(createReqUri(index, colors))
     .then(res => res.json())
     .then(data => {
+      const nextPageItem = data.splice(10, 1);
       result.previousPage = page - 1 || null;
+      result.nextPage = data.length && nextPageItem.length ? page + 1 : null;
 
-      data.forEach((item) => {
+      data.forEach(item => {
         result.ids.push(item.id);
         item.isPrimary = isPrimaryColor(item.color);
         if (item.disposition === 'open'){
@@ -33,17 +35,9 @@ const retrieve = (options = {}) => {
           result.closedPrimaryCount++;
         }
       });
-
-      return createReqUri(1, index + 10);
-    })
-    .then(nextPageUri => fetch(nextPageUri))
-    .then(res => res.json())
-    .then(nextPgItem => {
-      result.nextPage = result.ids.length && nextPgItem.length ? page + 1 : null;
       return result;
     })
     .catch(err => console.log('Fetch Request Failed', err));
 };
-
 
 export default retrieve;
